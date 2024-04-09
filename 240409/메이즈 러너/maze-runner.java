@@ -178,8 +178,8 @@ public class Main {
         if (size == 1) {
             if (board[x][y] > 0) {
                 board[x][y] -= 1;
-                return;
             }
+            return;
         }
         List<Position> positionList = getPositionList(x, y, size);
         int[][] edge = new int[N][N];
