@@ -71,9 +71,12 @@ public class Main {
     }
 
     void solve() {
-        while (K-- > 0 && outCount < M) {
+        while (K-- > 0) {
             exitMoved = false;
             moveMember();
+            if (outCount == M) {
+                break;
+            }
             markMemberToBoard();
             Square s = getSquare();
             rotateSquare(s.x, s.y, s.size);
