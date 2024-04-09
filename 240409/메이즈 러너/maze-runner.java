@@ -2,6 +2,15 @@ import java.util.*;
 import java.io.*;
 
 /*
+2
+2
+1
+3
+1
+1
+3
+
+
 5 3 8
 0 0 0 0 1
 9 2 2 0 0
@@ -15,6 +24,40 @@ import java.io.*;
 
 7
 1 1
+
+8 5 100
+6 0 0 0 5 0 6 0
+3 2 3 6 5 4 5 0
+1 0 0 1 8 4 5 3
+8 9 6 6 7 1 5 9
+0 5 7 9 0 3 0 5
+1 0 0 0 0 0 4 8
+0 9 0 3 0 0 0 8
+0 0 9 1 0 7 5 0
+1 6
+7 7
+5 5
+6 5
+3 2
+5 7
+
+4 7 3
+0 0 0 0
+0 0 0 0
+0 0 0 0
+0 0 0 0
+3 4
+1 2
+3 3
+1 1
+2 2
+3 1
+4 3
+3 2
+
+14
+2 1
+
  */
 
 public class Main {
@@ -72,14 +115,51 @@ public class Main {
 
     void solve() {
         while (K-- > 0) {
+//            System.out.println("===============================");
+//            System.out.println("ex = " + ex + " ey = " + ey);
             exitMoved = false;
             moveMember();
+            markMemberToBoard();
+//            printBoard();
+//            printMembers();
             if (outCount == M) {
                 break;
             }
-            markMemberToBoard();
             Square s = getSquare();
+//            System.out.println("s.x = "+s.x +" s.y = "+s.y+" size = "+s.size);
             rotateSquare(s.x, s.y, s.size);
+//            markMemberToBoard();
+//            System.out.println("after rotate :");
+//            System.out.println("ex = " + ex + " ey = " + ey);
+//            printBoard();
+//            printMembers();
+
+        }
+    }
+
+    void printMembers() {
+        System.out.println("members : ");
+        for (Member m : members) {
+            if (m.isOut) {
+                continue;
+            }
+            System.out.println("m.x = " + m.x + " m.y = " + m.y + " isOut = " + m.isOut + " distance = " + m.distance);
+        }
+    }
+
+    void printBoard() {
+        System.out.println("board : ");
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                if (i == ex && j == ey) {
+                    System.out.print(-1 + " ");
+                } else if (hasMember[i][j]){
+                    System.out.print(1 + " ");
+                } else {
+                    System.out.print(board[i][j]+" ");
+                }
+            }
+            System.out.println();
         }
     }
 
@@ -95,8 +175,9 @@ public class Main {
                 int newY = m.y + DY[d];
                 int newDistance = getDistance(ex, ey, newX, newY);
                 if (isInner(newX, newY) && board[newX][newY] == EMPTY && newDistance < currentDistance) {
-                    currentDistance = newDistance;
+//                    currentDistance = newDistance;
                     direction = d;
+                    break;
                 }
             }
             if (direction == -1) {
@@ -132,8 +213,8 @@ public class Main {
 
     Square getSquare() {
         int size = getSquareSize();
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
+        for (int i = 0; i + size <= N; i++) {
+            for (int j = 0; j + size <= N; j++) {
                 if (!squareContainsExit(i, j, size)) {
                     continue;
                 }
@@ -190,22 +271,26 @@ public class Main {
             Position p = positionList.get(i);
             Position left = positionList.get(getLeftPosition(i, size - 1, positionList.size()));
             edge[p.x][p.y] = board[left.x][left.y];
+            if (edge[p.x][p.y] > 0) {
+                edge[p.x][p.y] -= 1;
+            }
         }
 
         for (int i = 0; i < positionList.size(); i++) {
             Position p = positionList.get(i);
             Position right = positionList.get(getRightPosition(i, size - 1, positionList.size()));
             board[p.x][p.y] = edge[p.x][p.y];
-            if (board[p.x][p.y] > 0) {
-                board[p.x][p.y] -= 1;
-            }
             if (ex == p.x && ey == p.y && !exitMoved) {
                 ex = right.x;
                 ey = right.y;
                 exitMoved = true;
             }
-            if (hasMember[p.x][p.y]) {
-                moveMember(p.x, p.y, right.x, right.y);
+        }
+        for (int i = positionList.size() - 1; i > -1; i--) {
+            Position p = positionList.get(i);
+            Position left = positionList.get(getLeftPosition(i, size - 1, positionList.size()));
+            if (hasMember[left.x][left.y]) {
+                moveMember(left.x, left.y, p.x, p.y);
             }
         }
 
