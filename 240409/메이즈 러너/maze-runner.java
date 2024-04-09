@@ -1,65 +1,6 @@
 import java.util.*;
 import java.io.*;
 
-/*
-2
-2
-1
-3
-1
-1
-3
-
-
-5 3 8
-0 0 0 0 1
-9 2 2 0 0
-0 1 0 1 0
-0 0 0 1 0
-0 0 0 0 0
-1 3
-3 1
-3 5
-3 3
-
-7
-1 1
-
-8 5 100
-6 0 0 0 5 0 6 0
-3 2 3 6 5 4 5 0
-1 0 0 1 8 4 5 3
-8 9 6 6 7 1 5 9
-0 5 7 9 0 3 0 5
-1 0 0 0 0 0 4 8
-0 9 0 3 0 0 0 8
-0 0 9 1 0 7 5 0
-1 6
-7 7
-5 5
-6 5
-3 2
-5 7
-
-4 7 3
-0 0 0 0
-0 0 0 0
-0 0 0 0
-0 0 0 0
-3 4
-1 2
-3 3
-1 1
-2 2
-3 1
-4 3
-3 2
-
-14
-2 1
-
- */
-
 public class Main {
     static final BufferedReader BR = new BufferedReader(new InputStreamReader(System.in));
     static final BufferedWriter BW = new BufferedWriter(new OutputStreamWriter(System.out));
@@ -115,53 +56,18 @@ public class Main {
 
     void solve() {
         while (K-- > 0) {
-//            System.out.println("===============================");
-//            System.out.println("ex = " + ex + " ey = " + ey);
             exitMoved = false;
             moveMember();
             markMemberToBoard();
-//            printBoard();
-//            printMembers();
             if (outCount == M) {
                 break;
             }
             Square s = getSquare();
-//            System.out.println("s.x = "+s.x +" s.y = "+s.y+" size = "+s.size);
             rotateSquare(s.x, s.y, s.size);
-//            markMemberToBoard();
-//            System.out.println("after rotate :");
-//            System.out.println("ex = " + ex + " ey = " + ey);
-//            printBoard();
-//            printMembers();
 
         }
     }
-
-    void printMembers() {
-        System.out.println("members : ");
-        for (Member m : members) {
-            if (m.isOut) {
-                continue;
-            }
-            System.out.println("m.x = " + m.x + " m.y = " + m.y + " isOut = " + m.isOut + " distance = " + m.distance);
-        }
-    }
-
-    void printBoard() {
-        System.out.println("board : ");
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                if (i == ex && j == ey) {
-                    System.out.print(-1 + " ");
-                } else if (hasMember[i][j]){
-                    System.out.print(1 + " ");
-                } else {
-                    System.out.print(board[i][j]+" ");
-                }
-            }
-            System.out.println();
-        }
-    }
+    
 
     void moveMember() {
         for (Member m : members) {
@@ -175,7 +81,6 @@ public class Main {
                 int newY = m.y + DY[d];
                 int newDistance = getDistance(ex, ey, newX, newY);
                 if (isInner(newX, newY) && board[newX][newY] == EMPTY && newDistance < currentDistance) {
-//                    currentDistance = newDistance;
                     direction = d;
                     break;
                 }
