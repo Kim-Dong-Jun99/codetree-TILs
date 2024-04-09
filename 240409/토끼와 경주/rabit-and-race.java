@@ -158,12 +158,12 @@ public class Main {
     }
 
     void getBestRabbit() throws IOException {
-        int bestScore = 0;
+        long bestScore = 0;
         for (Rabbit rabbit : rabbitMap.values()) {
             bestScore = Math.max(bestScore, rabbit.score);
 
         }
-        BW.write(Integer.toString(bestScore) + "\n");
+        BW.write(Long.toString(bestScore) + "\n");
     }
 
     void printResult() throws IOException {
@@ -198,7 +198,7 @@ public class Main {
         int x;
         int y;
         int d;
-        int score;
+        long score;
         Rabbit(int id, int x, int y, int d) {
             this.id = id;
             this.x = x;
