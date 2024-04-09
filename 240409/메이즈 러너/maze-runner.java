@@ -172,8 +172,14 @@ public class Main {
     }
 
     void rotateSquare(int x, int y, int size) {
-        if (size < 2) {
+        if (size < 1) {
             return;
+        }
+        if (size == 1) {
+            if (board[x][y] > 0) {
+                board[x][y] -= 1;
+                return;
+            }
         }
         List<Position> positionList = getPositionList(x, y, size);
         int[][] edge = new int[N][N];
