@@ -62,19 +62,20 @@ public class Main {
 
     void movePeople() {
         for (People people : peopleList) {
-            if (people.arrived) {
-                continue;
-            }
             people.move();
         }
     }
 
     void checkArrival() {
+        List<People> newPeople = new ArrayList<>();
         for (People people : peopleList) {
             if (people.arrived) {
                 occupied[people.storeX][people.storeY] = true;
+            } else {
+                newPeople.add(people);
             }
         }
+        peopleList = newPeople;
     }
 
     void addPeople() {
