@@ -59,7 +59,7 @@ public class Main {
     void getTurrets() {
         turrets = new ArrayList<>();
         for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
+            for (int j = 0; j < M; j++) {
                 if (power[i][j] > 0) {
                     turrets.add(new Turret(i, j, power[i][j], attack[i][j]));
                 }
