@@ -183,8 +183,11 @@ public class Main {
                 }
             }
             if (visited[storeX][storeY]) {
+                this.visited = null;
+                this.positions = null;
                 arriveCount += 1;
                 arrived = true;
+                return;
             }
             positions = temp;
         }
