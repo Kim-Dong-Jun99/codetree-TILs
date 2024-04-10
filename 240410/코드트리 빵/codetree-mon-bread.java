@@ -1,26 +1,26 @@
 import java.util.*;
 import java.io.*;
 
+
+
 public class Main {
     static final BufferedReader BR = new BufferedReader(new InputStreamReader(System.in));
-    static final BufferedWriter BW = new BufferedWriter(new OutputStreamWriter(System.out));
-    static final int[] DX = {0, 1, 0, -1};
-    static final int[] DY = {1, 0, -1, 0};
-    static boolean[][] occupied;
+    static final int[] DX = {-1, 0, 0, 1};
+    static final int[] DY = {0, -1, 1, 0};
+    int[] inputArray;
     static int n, m;
     static int[][] board;
-    static int arriveCount;
-
-    int[] inputArray;
-    Store[] stores;
-    List<People> peopleList;
     int time;
-
-    public static void main(String[] args) throws IOException {
+    HashMap<Integer, Position> storeMap;
+    List<Travel> travels;
+    public static void main(String[] args) {
         Main main = new Main();
-        main.init();
-        main.solve();
-        main.printResult();
+        try {
+            main.init();
+            main.solution();
+        } catch (IOException e) {
+            System.out.println("Exception during I/O");
+        }
     }
 
     int[] getInputArray() throws IOException {
@@ -33,189 +33,130 @@ public class Main {
         m = inputArray[1];
 
         board = new int[n][n];
-        occupied = new boolean[n][n];
+
         for (int i = 0; i < n; i++) {
             board[i] = getInputArray();
         }
 
-        stores = new Store[m + 1];
-        for (int i = 1; i <= m; i++) {
-            inputArray = getInputArray();
-            stores[i] = new Store(inputArray[0] - 1, inputArray[1] - 1);
-        }
-        peopleList = new ArrayList<>();
         time = 1;
-        arriveCount = 0;
+        storeMap = new HashMap<>();
+        for (int i = 0; i < m; i++) {
+            inputArray = getInputArray();
+            storeMap.put(time + i, new Position(inputArray[0] - 1, inputArray[1] - 1));
+        }
+
+        travels = new ArrayList<>();
     }
 
-    void solve() {
+
+    void solution() throws IOException {
         while (true) {
-            movePeople();
-            if (arriveCount == m) {
-                break;
+            for (Travel travel : travels) {
+                travel.bfs();
             }
-            checkArrival();
-            addPeople();
-            time += 1;
-        }
-    }
 
-    void movePeople() {
-        for (People people : peopleList) {
-            people.move();
-        }
-    }
-
-    void checkArrival() {
-        List<People> newPeople = new ArrayList<>();
-        for (People people : peopleList) {
-            if (people.arrived) {
-                occupied[people.storeX][people.storeY] = true;
-            } else {
-                newPeople.add(people);
-            }
-        }
-        peopleList = newPeople;
-    }
-
-    void addPeople() {
-        if (time <= m) {
-            Store store = stores[time];
-            Position baseCamp = findBaseCamp(store);
-            peopleList.add(new People(baseCamp.x, baseCamp.y, store.x, store.y));
-        }
-    }
-
-    Position findBaseCamp(Store store) {
-        List<Position> candidate = new ArrayList<>();
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                if (board[i][j] != 0) {
-                    candidate.add(new Position(i, j));
+            List<Travel> newTravel = new ArrayList<>();
+            for (Travel travel : travels) {
+                if (travel.isEnd) {
+                    board[travel.store.x][travel.store.y] = -1;
+                } else {
+                    newTravel.add(travel);
                 }
             }
+            travels = newTravel;
+
+            if (storeMap.containsKey(time)) {
+                Position store = storeMap.get(time);
+                Position baseCamp = getBaseCamp(store);
+                travels.add(new Travel(store, baseCamp));
+                board[baseCamp.x][baseCamp.y] = -1;
+            }
+
+            if (travels.isEmpty()) {
+                break;
+            }
+            time += 1;
+//            System.out.println(time);
+
         }
-        PriorityQueue<BaseCamp> baseCamps = new PriorityQueue<>(BaseCamp::sort);
-        for (Position p : candidate) {
-            int distance = calculateDistance(p, store);
-            baseCamps.add(new BaseCamp(distance, p.x, p.y));
-        }
-        BaseCamp baseCamp = baseCamps.remove();
-        return new Position(baseCamp.x, baseCamp.y);
+        System.out.println(time);
     }
 
-    int calculateDistance(Position position, Store store) {
-        int distance = 0;
+    Position getBaseCamp(Position store) {
         boolean[][] visited = new boolean[n][n];
-        visited[position.x][position.y] = true;
-        List<Position> current = new ArrayList<>();
-        current.add(position);
-        while (!current.isEmpty()) {
+        List<Position> currentPositions = Collections.singletonList(store);
+        PriorityQueue<Position> minHeap = new PriorityQueue<>(Position::getMinPosition);
+        visited[store.x][store.y] = true;
+        boolean isEnd = false;
+        while (!currentPositions.isEmpty()) {
             List<Position> temp = new ArrayList<>();
-            for (Position p : current) {
-                for (int d = 0; d < 4; d++) {
-                    int newX = p.x + DX[d];
-                    int newY = p.y + DY[d];
-                    if (isInner(newX, newY) && !visited[newX][newY] && !occupied[newX][newY]) {
-                        temp.add(new Position(newX, newY));
+            for (Position current : currentPositions) {
+                for (int i = 0; i < 4; i++) {
+                    int newX = current.x + DX[i];
+                    int newY = current.y + DY[i];
+                    if (canGo(newX, newY) && !visited[newX][newY]) {
+                        Position nextPosition = new Position(newX, newY);
                         visited[newX][newY] = true;
+                        temp.add(nextPosition);
+                        if (board[newX][newY] == 1) {
+                            isEnd = true;
+                            minHeap.add(nextPosition);
+                        }
                     }
                 }
             }
-            distance += 1;
-            if (visited[store.x][store.y]) {
+            if (isEnd) {
                 break;
             }
-            current = temp;
+
+            currentPositions = temp;
         }
-        return distance;
+
+        return minHeap.remove();
     }
 
-    boolean isInner(int x, int y) {
+    static boolean canGo(int x, int y) {
+        return isInner(x, y) && board[x][y] >= 0;
+    }
+
+    static boolean isInner(int x, int y) {
         return 0 <= x && x < n && 0 <= y && y < n;
     }
 
-    void printResult() throws IOException {
-        BW.write(Integer.toString(time));
-        BW.flush();
-        BW.close();
-        BR.close();
-    }
 
-    static class Store {
-        int x;
-        int y;
-
-        Store(int x, int y) {
-            this.x = x;
-            this.y = y;
-        }
-    }
-
-    static class People {
-        boolean arrived;
+    static class Travel {
         boolean[][] visited;
-        List<Position> positions;
-        int storeX;
-        int storeY;
+        Position store;
+        boolean isEnd;
+        List<Position> currentPositions;
+        Position baseCamp;
 
-        People(int baseCampX, int baseCampY, int storeX, int storeY) {
-            this.arrived = false;
-            occupied[baseCampX][baseCampY] = true;
-            board[baseCampX][baseCampY] = 0;
-            this.positions = new ArrayList<>();
-            this.positions.add(new Position(baseCampX, baseCampY));
+        public Travel(Position store, Position baseCamp) {
+            this.store = store;
+            this.baseCamp = baseCamp;
             this.visited = new boolean[n][n];
-            this.storeX = storeX;
-            this.storeY = storeY;
+            isEnd = false;
+            currentPositions = Collections.singletonList(baseCamp);
         }
 
-        void move() {
+        void bfs() {
             List<Position> temp = new ArrayList<>();
-            for (Position p : positions) {
-                for (int d = 0; d < 4; d++) {
-                    int newX = p.x + DX[d];
-                    int newY = p.y + DY[d];
-                    if (isInner(newX, newY) && !occupied[newX][newY] && !visited[newX][newY]) {
+            for (Position current : currentPositions) {
+                for (int i = 0; i < 4; i++) {
+                    int newX = current.x + DX[i];
+                    int newY = current.y + DY[i];
+
+                    if (canGo(newX, newY) && !visited[newX][newY]) {
                         temp.add(new Position(newX, newY));
                         visited[newX][newY] = true;
                     }
                 }
             }
-            if (visited[storeX][storeY]) {
-                this.visited = null;
-                this.positions = null;
-                arriveCount += 1;
-                arrived = true;
-                return;
+
+            currentPositions = temp;
+            if (visited[store.x][store.y]) {
+                isEnd = true;
             }
-            positions = temp;
-        }
-
-        boolean isInner(int x, int y) {
-            return 0 <= x && x < n && 0 <= y && y < n;
-        }
-    }
-
-    static class BaseCamp {
-        int distance;
-        int x;
-        int y;
-
-        BaseCamp(int distance, int x, int y) {
-            this.distance = distance;
-            this.x = x;
-            this.y = y;
-        }
-
-        int sort(BaseCamp compare) {
-            if (this.distance != compare.distance) {
-                return Integer.compare(this.distance, compare.distance);
-            }
-            if (this.x != compare.x) {
-                return Integer.compare(this.x, compare.x);
-            }
-            return Integer.compare(this.y, compare.y);
         }
     }
 
@@ -223,9 +164,18 @@ public class Main {
         int x;
         int y;
 
-        Position(int x, int y) {
+        public Position(int x, int y) {
             this.x = x;
             this.y = y;
         }
+
+        int getMinPosition(Position compare) {
+            if (this.x != compare.x) {
+                return Integer.compare(this.x, compare.x);
+            }
+            return Integer.compare(this.y, compare.y);
+        }
     }
+
+
 }
