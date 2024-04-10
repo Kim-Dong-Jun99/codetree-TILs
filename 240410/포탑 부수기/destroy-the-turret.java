@@ -3,24 +3,29 @@ import java.io.*;
 
 public class Main {
     static final BufferedReader BR = new BufferedReader(new InputStreamReader(System.in));
-    static final BufferedWriter BW = new BufferedWriter(new OutputStreamWriter(System.out));
-    static final int[] DX = {0, 1, 1, 1, 0, -1, -1, -1};
-    static final int[] DY = {1, 1, 0, -1, -1, -1, 0, 1};
-
+    static final int[] DX = {0, 1, 0, -1, 1, 1, -1, -1};
+    static final int[] DY = {1, 0, -1, 0, 1, -1, 1, -1};
+    static final int[] OPPOSITE = {2, 3, 0, 1};
     int[] inputArray;
     int N, M, K;
-    int[][] power;
-    int[][] attack;
-    int time;
-    List<Turret> turrets;
+    int[][] board;
+    int[][] lastAttack;
+    int[][] visited;
     boolean[][] attacked;
+    int count, distance;
     Turret attacker, target;
+    int damage;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
+
         Main main = new Main();
-        main.init();
-        main.solve();
-        main.printResult();
+        try {
+            main.init();
+            main.solution();
+        } catch (IOException e) {
+            System.out.println("Exception during I/O");
+        }
+
     }
 
     int[] getInputArray() throws IOException {
@@ -33,116 +38,171 @@ public class Main {
         M = inputArray[1];
         K = inputArray[2];
 
-        power = new int[N][M];
-        attack = new int[N][M];
+        board = new int[N][M];
+        lastAttack = new int[N][M];
+
         for (int i = 0; i < N; i++) {
-            power[i] = getInputArray();
+            board[i] = getInputArray();
         }
-        time = 1;
+
+        count = 0;
+
     }
 
-    void solve() {
-        while (K-- > 0) {
-            getTurrets();
+
+    void solution() throws IOException {
+        while (count < K) {
+            List<Turret> turrets = getTurrets();
             if (turrets.size() == 1) {
                 break;
             }
-            increaseAttackerPower();
-            if (!laserAttack()) {
-                canonAttack();
-            }
+            attacker = turrets.get(0);
+            target = turrets.get(turrets.size() - 1);
+
+            attack();
+
             repair();
-//            System.out.println("attack " + attacker.x + " " + attacker.y);
-//            System.out.println("target " + target.x + " " + target.y);
-//            System.out.println("==============");
-//            for (int i = 0; i < N; i++) {
-//                for (int j = 0; j < M; j++) {
-//                    System.out.print(power[i][j] +" ");
-//                }
-//                System.out.println();
-//            }
-            time += 1;
+            count += 1;
         }
+
+        printResult();
     }
 
-    void getTurrets() {
-        turrets = new ArrayList<>();
+    List<Turret> getTurrets() {
+        List<Turret> turrets = new ArrayList<>();
         for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                if (power[i][j] > 0) {
-                    turrets.add(new Turret(i, j, power[i][j], attack[i][j]));
+            for (int j = 0; j < M; j++) {
+                if (board[i][j] > 0) {
+                    turrets.add(new Turret(lastAttack[i][j], new Position(i, j), board[i][j]));
                 }
             }
         }
-        turrets.sort(Turret::sort);
-        attacker = turrets.get(0);
-        target = turrets.get(turrets.size()-1);
+
+        turrets.sort(Turret::getAttacker);
+
+        return turrets;
     }
 
-    void increaseAttackerPower() {
-        power[attacker.x][attacker.y] += N + M;
-        attack[attacker.x][attacker.y] = time;
+    void attack() {
+        lastAttack[attacker.position.x][attacker.position.y] = count + 1;
+        board[attacker.position.x][attacker.position.y] += N + M;
+
+        visited = new int[N][M];
         attacked = new boolean[N][M];
-    }
+        for (int i = 0; i < N; i++) {
+            Arrays.fill(visited[i], -1);
+        }
+        attacked[attacker.position.x][attacker.position.y] = true;
+        attacked[target.position.x][target.position.y] = true;
 
-    boolean laserAttack() {
-        Position[][] before = new Position[N][M];
-        List<Position> current = new ArrayList<>();
-        current.add(new Position(attacker.x, attacker.y));
-        while (!current.isEmpty()) {
+        visited[attacker.position.x][attacker.position.y] = 4;
+
+        List<Position> currentNodes = Arrays.asList(attacker.position);
+        distance = 0;
+        boolean canGo = false;
+        while (!currentNodes.isEmpty()) {
+            distance += 1;
             List<Position> temp = new ArrayList<>();
-            for (Position p : current) {
-                for (int d = 0; d < 8; d += 2) {
-                    Position next = nextPosition(p.x, p.y, d);
-                    if (power[next.x][next.y] > 0 && before[next.x][next.y] == null) {
-                        temp.add(next);
-                        before[next.x][next.y] = p;
+            for (Position current : currentNodes) {
+                for (int d = 0; d < 4; d++) {
+                    Position nextPosition = getNextPosition(current.x, current.y, d);
+                    if (board[nextPosition.x][nextPosition.y] > 0 && visited[nextPosition.x][nextPosition.y] == -1) {
+                        temp.add(nextPosition);
+                        visited[nextPosition.x][nextPosition.y] = d;
                     }
                 }
             }
-            if (before[target.x][target.y] != null) {
+            if (visited[target.position.x][target.position.y] != -1) {
+                canGo = true;
                 break;
             }
-            current = temp;
+
+            currentNodes = temp;
         }
 
-        if(before[target.x][target.y] == null) {
-            return false;
+        if (canGo) {
+            attackWithLaser();
+        } else {
+            attackWithCannon();
         }
 
-        attacked[attacker.x][attacker.y] = true;
-        attacked[target.x][target.y] = true;
 
-        int original = power[attacker.x][attacker.y];
-        int half = original / 2;
-
-        List<Position> track = new ArrayList<>();
-        Position back = before[target.x][target.y];
-        while (!(back.x == attacker.x && back.y == attacker.y)) {
-            track.add(back);
-            back = before[back.x][back.y];
-        }
-
-        for (Position p : track) {
-            power[p.x][p.y] -= half;
-            attacked[p.x][p.y] = true;
-        }
-
-        power[target.x][target.y] -= original;
-        return true;
     }
 
-    Position nextPosition(int x, int y, int d) {
-        int newX = x + DX[d];
-        int newY = y + DY[d];
+    void attackWithLaser() {
+        damage = board[attacker.position.x][attacker.position.y] / 2;
+        Position current = new Position(target.position.x, target.position.y);
+//        StringBuilder destination = direction[target.position.x][target.position.y];
+        while (true) {
+            Position nextPosition = getNextPosition(current.x, current.y, OPPOSITE[visited[current.x][current.y]]);
+            if (visited[nextPosition.x][nextPosition.y] == 4) {
+                break;
+            }
+            attacked[nextPosition.x][nextPosition.y] = true;
+            board[nextPosition.x][nextPosition.y] -= damage;
+            current = nextPosition;
+        }
+        board[target.position.x][target.position.y] -= board[attacker.position.x][attacker.position.y];
+//        for (int i = 0; i < destination.length(); i++) {
+//            int d = Character.getNumericValue(destination.charAt(i));
+//            Position nextPosition = getNextPosition(current.x, current.y, d);
+//            attacked[nextPosition.x][nextPosition.y] = true;
+//            if (nextPosition.x == target.position.x && nextPosition.y == target.position.y) {
+//                continue;
+//            }
+//            board[nextPosition.x][nextPosition.y] -= damage;
+//
+//            current = nextPosition;
+//        }
+//        board[target.position.x][target.position.y] -= board[attacker.position.x][attacker.position.y];
+
+    }
+
+
+    void attackWithCannon() {
+        damage = board[attacker.position.x][attacker.position.y] / 2;
+        for (int i = 0; i < 8; i++) {
+            Position nextPosition = getNextPosition(target.position.x, target.position.y, i);
+            if (board[nextPosition.x][nextPosition.y] > 0) {
+                if (nextPosition.x == attacker.position.x && nextPosition.y == attacker.position.y) {
+                    continue;
+                }
+                if (nextPosition.x == target.position.x && nextPosition.y == target.position.y) {
+                    continue;
+                }
+                board[nextPosition.x][nextPosition.y] -= damage;
+
+                attacked[nextPosition.x][nextPosition.y] = true;
+            }
+        }
+        board[target.position.x][target.position.y] -= board[attacker.position.x][attacker.position.y];
+    }
+
+    void repair() {
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < M; j++) {
+                if (board[i][j] > 0 && !attacked[i][j]) {
+                    board[i][j] += 1;
+                }
+            }
+        }
+    }
+
+
+    Position getNextPosition(int x, int y, int direction) {
+        int newX = x + DX[direction];
+        int newY = y + DY[direction];
+        if (isInner(newX, newY)) {
+            return new Position(newX, newY);
+        }
         if (newX == -1) {
-            newX = N-1;
+            newX = N - 1;
         }
         if (newX == N) {
             newX = 0;
         }
         if (newY == -1) {
-            newY = M-1;
+            newY = M - 1;
         }
         if (newY == M) {
             newY = 0;
@@ -154,81 +214,55 @@ public class Main {
         return 0 <= x && x < N && 0 <= y && y < M;
     }
 
-    void canonAttack() {
-        attacked[attacker.x][attacker.y] = true;
-        attacked[target.x][target.y] = true;
-
-        int original = power[attacker.x][attacker.y];
-        int half = original / 2;
-
-        for (int d = 0; d < 8; d++) {
-            Position next = nextPosition(target.x, target.y, d);
-            if (power[next.x][next.y] > 0) {
-                attacked[next.x][next.y] = true;
-                power[next.x][next.y] -= half;
-            }
-        }
-
-        power[target.x][target.y] -= original;
-    }
-
-    void repair() {
+    void printResult() {
+        int toPrint = 0;
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < M; j++) {
-                if (power[i][j] > 0 && !attacked[i][j]) {
-                    power[i][j] += 1;
-                }
+                toPrint = Math.max(toPrint, board[i][j]);
             }
         }
+        System.out.println(toPrint);
     }
 
-    void printResult() throws IOException {
-        int maxPower = 0;
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < M; j++) {
-                maxPower = Math.max(maxPower, power[i][j]);
-            }
-        }
-        BW.write(Integer.toString(maxPower));
-        BW.flush();
-        BW.close();
-        BR.close();
-    }
-
-    static class Turret {
-        int power;
-        int lastAttack;
-        int x;
-        int y;
-
-        Turret(int x, int y, int power, int lastAttack) {
-            this.x = x;
-            this.y = y;
-            this.power = power;
-            this.lastAttack = lastAttack;
-        }
-
-        int sort(Turret compare) {
-            if (this.power != compare.power) {
-                return Integer.compare(this.power, compare.power);
-            }
-            if (this.lastAttack != compare.lastAttack) {
-                return Integer.compare(compare.lastAttack, this.lastAttack);
-            }
-            if (this.x + this.y != compare.x + compare.y) {
-                return Integer.compare(compare.x + compare.y, this.x + this.y);
-            }
-            return Integer.compare(compare.y, this.y);
-        }
-    }
 
     static class Position {
         int x;
         int y;
 
-        Position(int x, int y) {
+        public Position(int x, int y) {
             this.x = x;
             this.y = y;
         }
+
+        int getPositionSum() {
+            return x + y;
+        }
+
     }
+
+    static class Turret {
+        int lastAttack;
+        Position position;
+        int value;
+
+        public Turret(int lastAttack, Position position, int value) {
+            this.lastAttack = lastAttack;
+            this.position = position;
+            this.value = value;
+        }
+
+        int getAttacker(Turret compare) {
+            if (this.value != compare.value) {
+                return Integer.compare(this.value, compare.value);
+            }
+            if (this.lastAttack != compare.lastAttack) {
+                return Integer.compare(compare.lastAttack, this.lastAttack);
+            }
+            if (this.position.getPositionSum() != compare.position.getPositionSum()) {
+                return Integer.compare(compare.position.getPositionSum(), this.position.getPositionSum());
+            }
+            return Integer.compare(compare.position.y, this.position.y);
+        }
+    }
+
 }
