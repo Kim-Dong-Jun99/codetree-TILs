@@ -52,15 +52,6 @@ public class Main {
                 canonAttack();
             }
             repair();
-            System.out.println("attack " + attacker.x + " " + attacker.y);
-            System.out.println("target " + target.x + " " + target.y);
-            System.out.println("==============");
-            for (int i = 0; i < N; i++) {
-                for (int j = 0; j < M; j++) {
-                    System.out.print(power[i][j] +" ");
-                }
-                System.out.println();
-            }
             time += 1;
         }
     }
