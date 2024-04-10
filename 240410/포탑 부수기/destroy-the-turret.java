@@ -11,6 +11,7 @@ public class Main {
     int N, M, K;
     int[][] power;
     int[][] attack;
+    int time;
     List<Turret> turrets;
     boolean[][] attacked;
     Turret attacker, target;
@@ -19,7 +20,7 @@ public class Main {
         Main main = new Main();
         main.init();
         main.solve();
-        main.printResult();        
+        main.printResult();
     }
 
     int[] getInputArray() throws IOException {
@@ -37,6 +38,7 @@ public class Main {
         for (int i = 0; i < N; i++) {
             power[i] = getInputArray();
         }
+        time = 1;
     }
 
     void solve() {
@@ -50,6 +52,16 @@ public class Main {
                 canonAttack();
             }
             repair();
+//            System.out.println("attack " + attacker.x + " " + attacker.y);
+//            System.out.println("target " + target.x + " " + target.y);
+//            System.out.println("==============");
+//            for (int i = 0; i < N; i++) {
+//                for (int j = 0; j < M; j++) {
+//                    System.out.print(power[i][j] +" ");
+//                }
+//                System.out.println();
+//            }
+            time += 1;
         }
     }
 
@@ -69,6 +81,7 @@ public class Main {
 
     void increaseAttackerPower() {
         power[attacker.x][attacker.y] += N + M;
+        attack[attacker.x][attacker.y] = time;
         attacked = new boolean[N][M];
     }
 
@@ -103,7 +116,7 @@ public class Main {
         int original = power[attacker.x][attacker.y];
         int half = original / 2;
 
-        List<Position> track = new ArrayList();
+        List<Position> track = new ArrayList<>();
         Position back = before[target.x][target.y];
         while (!(back.x == attacker.x && back.y == attacker.y)) {
             track.add(back);
@@ -144,7 +157,7 @@ public class Main {
     void canonAttack() {
         attacked[attacker.x][attacker.y] = true;
         attacked[target.x][target.y] = true;
-        
+
         int original = power[attacker.x][attacker.y];
         int half = original / 2;
 
