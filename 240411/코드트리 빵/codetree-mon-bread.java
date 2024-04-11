@@ -1,217 +1,220 @@
-import java.util.Scanner;
-import java.util.Queue;
-import java.util.LinkedList;
-
-class Pair {
-    int x, y;
-
-    public Pair(int x, int y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    public boolean isSame(Pair p) {
-        return this.x == p.x && this.y == p.y;
-    }
-}
+import java.util.*;
+import java.io.*;
 
 public class Main {
-    public static final int INT_MAX = Integer.MAX_VALUE;
-    public static final Pair EMPTY = new Pair(-1, -1);
-    public static final int DIR_NUM = 4;
-    public static final int MAX_M = 30;
-    public static final int MAX_N = 15;
-    
-    // 변수 선언
-    public static int n, m;
-    
-    // 0이면 빈 칸, 1이면 베이스 캠프, 2라면 아무도 갈 수 없는 곳을 뜻합니다.
-    public static int[][] grid = new int[MAX_N][MAX_N];
-    
-    // 편의점 목록을 관리합니다.
-    public static Pair[] cvsList = new Pair[MAX_M];
-    
-    // 현재 사람들의 위치를 관리합니다.
-    public static Pair[] people = new Pair[MAX_M];
-    
-    // 현재 시간을 기록합니다.
-    public static int currT;
-    
-    // dx, dy값을 
-    // 문제에서의 우선순위인 상좌우하 순으로 적어줍니다.
-    public static int[] dx = new int[]{-1,  0, 0, 1};
-    public static int[] dy = new int[]{ 0, -1, 1, 0};
-    
-    // bfs에 사용되는 변수들입니다.
-    public static int[][] step = new int[MAX_N][MAX_N];      // 최단거리 결과 기록
-    public static boolean[][] visited = new boolean[MAX_N][MAX_N];  // 방문 여부 표시
-    
-    // (x, y)가 격자 내에 있는 좌표인지를 판단합니다.
-    public static boolean inRange(int x, int y) {
+    static final BufferedReader BR = new BufferedReader(new InputStreamReader(System.in));
+    static final BufferedWriter BW = new BufferedWriter(new OutputStreamWriter(System.out));
+    static final int[] DX = {-1, 0, 0, 1};
+    static final int[] DY = {0, -1, 1, 0};
+    static int n, m;
+    static int[][] board;
+    static boolean[][] occupied;
+
+    List<Travel> travels;
+    Position[] stores;
+    int[] inputArray;
+    int time;
+
+    public static void main(String[] args) throws IOException {
+        Main main = new Main();
+        main.init();
+        main.solve();
+        main.printResult();
+    }
+
+    int[] getInputArray() throws IOException {
+        return Arrays.stream(BR.readLine().split(" ")).mapToInt(Integer::parseInt).toArray();
+    }
+
+    void init() throws IOException {
+        inputArray = getInputArray();
+        n = inputArray[0];
+        m = inputArray[1];
+
+        board = new int[n][n];
+        occupied = new boolean[n][n];
+        for (int i = 0; i < n; i++) {
+            board[i] = getInputArray();
+        }
+
+        stores = new Position[m + 1];
+        travels = new ArrayList<>();
+        for (int i = 1; i <= m; i++) {
+            inputArray = getInputArray();
+            stores[i] = new Position(inputArray[0] - 1, inputArray[1] - 1);
+        }
+
+        time = 1;
+    }
+
+    void solve() {
+        while (true) {
+            movePeople();
+            if (checkOccupied()) {
+                break;
+            }
+            addTravel();
+            time += 1;
+        }
+    }
+
+    void movePeople() {
+        for (Travel travel : travels) {
+            if (travel.arrived) {
+                continue;
+            }
+            travel.move();
+        }
+    }
+
+    boolean checkOccupied() {
+        int arrived = 0;
+        for (Travel travel : travels) {
+            if (travel.arrived) {
+                arrived += 1;
+                occupied[travel.storeX][travel.storeY] = true;
+            }
+        }
+        return arrived == m;
+    }
+
+    void addTravel() {
+        if (!(1 <= time && time <= m)) {
+            return;
+        }
+        Position store = stores[time];
+        Position baseCamp = getBaseCamp(store);
+        travels.add(new Travel(baseCamp.x, baseCamp.y, store.x, store.y));
+        occupied[baseCamp.x][baseCamp.y] = true;
+        board[baseCamp.x][baseCamp.y] = 0;
+
+    }
+
+    Position getBaseCamp(Position store) {
+        boolean[][] visited = new boolean[n][n];
+        PriorityQueue<Position> heap = new PriorityQueue<>(Position::sort);
+        List<Position> current = Collections.singletonList(store);
+        visited[store.x][store.y] = true;
+        boolean find = false;
+        while (!current.isEmpty()) {
+            List<Position> nextPositions = new ArrayList<>();
+            for (Position p : current) {
+                for (int d = 0; d < 4; d++) {
+                    int newX = p.x + DX[d];
+                    int newY = p.y + DY[d];
+                    if (isInner(newX, newY) && !visited[newX][newY] && !occupied[newX][newY]) {
+                        Position next = new Position(newX, newY);
+                        nextPositions.add(next);
+                        visited[newX][newY] = true;
+                        if (board[newX][newY] == 1) {
+                            find = true;
+                            heap.add(next);
+                        }
+                    }
+                }
+            }
+            if (find) {
+                break;
+            }
+            current = nextPositions;
+        }
+        return heap.remove();
+    }
+
+    static boolean isInner(int x, int y) {
         return 0 <= x && x < n && 0 <= y && y < n;
     }
-    
-    // (x, y)로 이동이 가능한지 판단합니다.
-    public static boolean canGo(int x, int y) {
-        return inRange(x, y) &&       // 범위를 벗어나지 않으면서 
-               !visited[x][y] &&      // 방문했던 적이 없으면서
-               grid[x][y] != 2;       // 이동 가능한 곳이어야 합니다.
+
+    void printResult() throws IOException {
+        BW.write(Integer.toString(time));
+        BW.flush();
+        BW.close();
+        BR.close();
     }
-    
-    // startPos를 시작으로 하는 BFS를 진행합니다.
-    // 시작점으로부터의 최단거리 결과는 step배열에 기록됩니다.
-    public static void bfs(Pair startPos) {
-        // visited, step 값을 전부 초기화합니다.
-        for(int i = 0; i < n; i++)
-            for(int j = 0; j < n; j++) {
-                visited[i][j] = false;
-                step[i][j] = 0;
+
+    static class Travel {
+        boolean arrived;
+        int currentX;
+        int currentY;
+        int storeX;
+        int storeY;
+
+        Travel(int currentX, int currentY, int storeX, int storeY) {
+            this.currentX = currentX;
+            this.currentY = currentY;
+            this.storeX = storeX;
+            this.storeY = storeY;
+            this.arrived = false;
+        }
+
+        void move() {
+            int d = getDirection();
+            currentX += DX[d];
+            currentY += DY[d];
+            if (storeX == currentX && storeY == currentY) {
+                arrived = true;
             }
-        
-        // 초기 위치를 넣어줍니다.
-        Queue<Pair> q = new LinkedList<>();
-        int sx = startPos.x, sy = startPos.y;
-        q.add(startPos);
-        visited[sx][sy] = true;
-        step[sx][sy] = 0;
-    
-        // BFS를 진행합니다.
-        while(!q.isEmpty()) {
-            // 가장 앞에 원소를 골라줍니다.
-            Pair currPos = q.poll();
-    
-            // 인접한 칸을 보며 아직 방문하지 않은 칸을 큐에 넣어줍니다.
-            int x = currPos.x, y = currPos.y;
-            for(int i = 0; i < DIR_NUM; i++) {
-                int nx = x + dx[i], ny = y + dy[i];
-                // 갈 수 있는 경우에만 진행합니다.
-                if(canGo(nx, ny)) {
-                    visited[nx][ny] = true;
-                    step[nx][ny] = step[x][y] + 1;
-                    q.add(new Pair(nx, ny));
+        }
+
+        int getDirection() {
+            int distance = Integer.MAX_VALUE;
+            int direction = -1;
+            for (int d = 0; d < 4; d++) {
+                int newX = currentX + DX[d];
+                int newY = currentY + DY[d];
+                if (isInner(newX, newY) && !occupied[newX][newY]) {
+                    int newDistance = getDistance(newX, newY);
+                    if (newDistance < distance) {
+                        distance = newDistance;
+                        direction = d;
+                    }
                 }
             }
+            return direction;
         }
-    }
-    
-    // 시뮬레이션을 진행합니다.
-    public static void simulate() {
-        // Step 1. 격자에 있는 사람들에 한하여 편의점 방향을 향해 1칸 움직입니다.
-        for(int i = 0; i < m; i++) {
-            // 아직 격자 밖에 있는 사람이거나 이미 편의점에 도착한 사람이라면 패스합니다.
-            if(people[i] == EMPTY || people[i].isSame(cvsList[i]))
-                continue;
-            
-            // 원래는 현재 위치에서 편의점 위치까지의 최단거리를 구해줘야 합니다.
-            // 다만 최단거리가 되기 위한 그 다음 위치를 구하기 위해서는
-            // 거꾸로 편의점 위치를 시작으로 현재 위치까지 오는 최단거리를 구해주는 것이 필요합니다.
-            // 따라서 편의점 위치를 시작으로 하는 BFS를 진행합니다.
-            bfs(cvsList[i]);
-    
-            int px = people[i].x, py = people[i].y;
-            // 현재 위치에서 상좌우하 중 최단거리 값이 가장 작은 곳을 고르면
-            // 그 곳으로 이동하는 것이 최단거리 대로 이동하는 것이 됩니다.
-            // 그러한 위치 중 상좌우하 우선순위대로 가장 적절한 곳을 골라줍니다.
-            int minDist = INT_MAX;
-            int minX = -1, minY = -1;
-            for(int j = 0; j < DIR_NUM; j++) {
-                int nx = px + dx[j], ny = py + dy[j];
-                if(inRange(nx, ny) && visited[nx][ny] && minDist > step[nx][ny]) {
-                    minDist = step[nx][ny];
-                    minX = nx; minY = ny;
+
+        int getDistance(int x, int y) {
+            boolean[][] visited = new boolean[n][n];
+            int distance = 0;
+            visited[x][y] = true;
+            List<Position> current = Collections.singletonList(new Position(x, y));
+            while (!current.isEmpty()) {
+                if (visited[storeX][storeY]) {
+                    return distance;
                 }
-            }
-    
-            // 우선순위가 가장 높은 위치로 한 칸 움직여줍니다.
-            people[i] = new Pair(minX, minY);
-        }
-    
-        // Step 2. 편의점에 도착한 사람에 한하여 
-        //         앞으로 이동 불가능하다는 표시로 
-        //         grid값을 2로 바꿔줍니다.
-        for(int i = 0; i < m; i++) {
-            if(people[i].isSame(cvsList[i])) {
-                int px = people[i].x, py = people[i].y;
-                grid[px][py] = 2;
-            }
-        }
-    
-        // Step 3. 현재 시간 currT에 대해 currT ≤ m를 만족한다면
-        //         t번 사람이 베이스 캠프로 이동합니다.
-    
-        // currT가 m보다 크다면 패스합니다.
-        if(currT > m)
-            return;
-        
-        // Step 3-1. 편의점으로부터 가장 가까운 베이스 캠프를 고르기 위해
-        //           편의점을 시작으로 하는 BFS를 진행합니다.
-        bfs(cvsList[currT - 1]);
-    
-        // Step 3-2. 편의점에서 가장 가까운 베이스 캠프를 선택합니다.
-        //           i, j가 증가하는 순으로 돌리기 때문에
-        //           가장 가까운 베이스 캠프가 여러 가지여도
-        //           알아서 (행, 열) 우선순위대로 골라집니다.
-        int minDist = INT_MAX;
-        int minX = -1, minY = -1;
-        for(int i = 0; i < n; i++) {
-            for(int j = 0; j < n; j++) {
-                // 방문 가능한 베이스 캠프 중
-                // 거리가 가장 가까운 위치를 찾아줍니다.
-                if(visited[i][j] && grid[i][j] == 1 && minDist > step[i][j]) {
-                    minDist = step[i][j];
-                    minX = i; minY = j;
+                List<Position> next = new ArrayList<>();
+                for (Position p : current) {
+                    for (int d = 0; d < 4; d++) {
+                        int newX = p.x + DX[d];
+                        int newY = p.y + DY[d];
+                        if (isInner(newX, newY) && !visited[newX][newY] && !occupied[newX][newY]) {
+                            next.add(new Position(newX, newY));
+                            visited[newX][newY] = true;
+                        }
+                    }
                 }
+                distance += 1;
+                current = next;
             }
+
+            return Integer.MAX_VALUE;
         }
-        
-        // 우선순위가 가장 높은 베이스 캠프로 이동합니다.
-        people[currT - 1] = new Pair(minX, minY);
-        // 해당 베이스 캠프는 앞으로 이동이 불가능한 칸임을 표시합니다.
-        grid[minX][minY] = 2;
-    }
-    
-    // 전부 편의점에 도착헀는지를 확인합니다.
-    public static boolean end() {
-        // 단 한 사람이라도
-        // 편의점에 도착하지 못했다면
-        // 아직 끝나지 않은 것입니다.
-        for(int i = 0; i < m; i++) {
-            if(!people[i].isSame(cvsList[i]))
-                return false;
-        }
-    
-        // 전부 편의점에 도착했다면 끝입니다.
-        return true;
     }
 
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        // 입력:
-        n = sc.nextInt();
-        m = sc.nextInt();
-        for(int i = 0; i < n; i++)
-            for(int j = 0; j < n; j++)
-                grid[i][j] = sc.nextInt();
-        
-        for(int i = 0; i < m; i++) {
-            int x = sc.nextInt();
-            int y = sc.nextInt();
-            cvsList[i] = new Pair(x - 1, y - 1);
+    static class Position {
+        int x;
+        int y;
+
+        Position(int x, int y) {
+            this.x = x;
+            this.y = y;
         }
 
-        // 초기 사람들은 격자 밖에 있으므로
-        // 위치를 EMPTY 상태로 놓습니다.
-        for(int i = 0; i < m; i++)
-            people[i] = EMPTY;
-
-        // 1분에 한번씩 시뮬레이션을 진행합니다.
-        while(true) {
-            currT++;
-            simulate();
-            // 전부 이동이 끝났다면 종료합니다.
-            if(end()) break;
+        int sort(Position compare) {
+            if (this.x != compare.x) {
+                return Integer.compare(this.x, compare.x);
+            }
+            return Integer.compare(this.y, compare.y);
         }
-
-        System.out.print(currT);
     }
 }
