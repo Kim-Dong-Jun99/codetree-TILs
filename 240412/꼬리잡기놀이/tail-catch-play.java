@@ -47,7 +47,7 @@ public class Main {
         int teamIndex = 1;
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                if (board[i][j] == 4 && !visited[i][j]) {
+                if (board[i][j] == 1 && !visited[i][j]) {
                     List<Position> tracks = getTracks(i, j, visited);
                     List<Position> people = getPeople(tracks);
                     markPeopleToBoard(people, teamIndex);
@@ -68,15 +68,30 @@ public class Main {
         while (!current.isEmpty()) {
             Position curr = current.poll();
             tracks.add(curr);
+            Position people = null;
+            Position connected = null;
             for (int d = 0; d < 4; d++) {
                 int newX = curr.x + DX[d];
                 int newY = curr.y + DY[d];
                 if (isInner(newX, newY) && board[newX][newY] != 0 && !visited[newX][newY]) {
-                    index += 1;
-                    current.add(new Position(index, newX, newY));
-                    visited[newX][newY] = true;
-                    break;
+                    if (board[newX][newY] <= 3) {
+                        people = new Position(index + 1, newX, newY);
+                    } else {
+                        connected = new Position(index + 1, newX, newY);
+                    }
                 }
+            }
+
+            if (people != null) {
+                index += 1;
+                current.add(people);
+                visited[people.x][people.y] = true;
+                continue;
+            }
+            if (connected != null) {
+                index += 1;
+                current.add(connected);
+                visited[connected.x][connected.y] = true;
             }
         }
         return tracks;
