@@ -185,7 +185,7 @@ public class Main {
         } else if (div == 1) {
             return new Position(n - 1, diff);
         } else if (div == 2) {
-            return new Position(diff, n - 1);
+            return new Position(n - 1- diff, n - 1);
         } else {
             return new Position(0, n - 1 - diff);
         }
