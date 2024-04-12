@@ -86,10 +86,12 @@ public class Main {
         boolean[][] caught = new boolean[n][n];
         int x = catcher.x;
         int y = catcher.y;
-        while (isInner(x, y)) {
+        int distance = 0;
+        while (isInner(x, y) && distance < 3) {
             caught[x][y] = true;
             x += dx[catcher.d];
             y += dy[catcher.d];
+            distance += 1;
         }
         List<Runner> notCaught = new ArrayList<>();
         int caughtRunner = 0;
@@ -151,7 +153,7 @@ public class Main {
         }
 
         void initRotate() {
-            int centerX = n/2;
+            int centerX = n / 2;
             int centerY = n / 2;
             int size = 1;
             while (size <= n / 2) {
