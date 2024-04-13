@@ -3,24 +3,22 @@ import java.io.*;
 
 public class Main {
     static final BufferedReader BR = new BufferedReader(new InputStreamReader(System.in));
-    static final int[] DX = {-1, 0, 1, 0, 1, 1, -1, -1};
-    static final int[] DY = {0, 1, 0, -1, 1, -1, 1, -1};
-    static final int WALL = -1;
+    static final BufferedWriter BW = new BufferedWriter(new OutputStreamWriter(System.out));
+    static final int[] DX = {0, 1, 1, 1, 0, -1, -1, -1};
+    static final int[] DY = {1, 1, 0, -1, -1, -1, 0, 1};
+
     int[] inputArray;
-    int[][] tree;
-    int[][] poison;
-    int n, m, c, k;
-    int time;
+    int n, m, k, c;
+    int year;
+    int[][] trees;
+    int[][] sanitizeDuration;
     int answer;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Main main = new Main();
-        try {
-            main.init();
-            main.solution();
-        } catch (IOException e) {
-            System.out.println("Exception during I/O");
-        }
+        main.init();
+        main.solve();
+        main.printResult();
     }
 
     int[] getInputArray() throws IOException {
@@ -34,154 +32,167 @@ public class Main {
         k = inputArray[2];
         c = inputArray[3];
 
-        tree = new int[n][n];
-        poison = new int[n][n];
-
-        time = 1;
-        answer = 0;
+        trees = new int[n][n];
+        sanitizeDuration = new int[n][n];
         for (int i = 0; i < n; i++) {
-            tree[i] = getInputArray();
+            trees[i] = getInputArray();
         }
-
+        year = 1;
+        answer = 0;
     }
 
-
-    void solution() throws IOException {
-        while (time <= m) {
-            growAndBreed();
-            try {
-
-                poison();
-            } catch (RuntimeException e) {
-                break;
-            }
-            time += 1;
+    void solve() {
+        while (year <= m) {
+            growTree();
+            spreadTree();
+            sanitize();
+            year += 1;
         }
-        System.out.println(answer);
     }
 
-    void growAndBreed() {
-        int[][] newTree = new int[n][n];
+    void growTree() {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                if (tree[i][j] == -1) {
-                    newTree[i][j] = -1;
-                } else if (tree[i][j] > 0) {
-                    List<Position> treeNeighbor = new ArrayList<>();
-                    List<Position> empty = new ArrayList<>();
-
-                    for (int d = 0; d < 4; d++) {
+                if (trees[i][j] > 0) {
+                    int neighbourCount = 0;
+                    for (int d = 0; d < 8; d += 2) {
                         int newX = i + DX[d];
                         int newY = j + DY[d];
-                        if (isInner(newX, newY)) {
-                            if (canBreed(newX, newY)) {
-                                empty.add(new Position(newX, newY));
-                            }
-                            if (tree[newX][newY] > 0) {
-                                treeNeighbor.add(new Position(newX, newY));
-                            }
+                        if (isInner(newX, newY) && trees[newX][newY] > 0) {
+                            neighbourCount += 1;
                         }
                     }
-                    newTree[i][j] = tree[i][j] + treeNeighbor.size();
-                    for (Position emptyPosition : empty) {
-                        newTree[emptyPosition.x][emptyPosition.y] += newTree[i][j] / empty.size();
-                    }
-
+                    trees[i][j] += neighbourCount;
                 }
             }
         }
-
-        tree = newTree;
     }
 
-    boolean canBreed(int x, int y) {
-        return poison[x][y] < time && tree[x][y] == 0;
-    }
-
-    boolean canPoison(int x, int y) {
-        return tree[x][y] > 0;
-    }
     boolean isInner(int x, int y) {
         return 0 <= x && x < n && 0 <= y && y < n;
     }
 
-    Position getPoisonTarget() {
-        int maxErase = 0;
-        Position toReturn = null;
+    void spreadTree() {
+        int[][] newTree = new int[n][n];
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                if (tree[i][j] > 0) {
-                    int removedTree = calculateRemovedTree(i, j);
-                    if (removedTree > maxErase) {
-                        maxErase = removedTree;
-                        toReturn = new Position(i, j);
-                    }
-
-
-                }
-            }
-        }
-        return toReturn;
-    }
-
-    int calculateRemovedTree(int x, int y) {
-        int removed = tree[x][y];
-        for (int i = 4; i < 8; i++) {
-            for (int d = 1; d <= k; d++) {
-                int newX = x + DX[i] * d;
-                int newY = y + DY[i] * d;
-                if (isInner(newX, newY) && canPoison(newX, newY)) {
-                    removed += tree[newX][newY];
-                } else {
-                    break;
-                }
-            }
-        }
-        return removed;
-
-    }
-
-    void poison() {
-        Position position = getPoisonTarget();
-        answer += tree[position.x][position.y];
-        tree[position.x][position.y] = 0;
-        poison[position.x][position.y] = time + c;
-        for (int i = 4; i < 8; i++) {
-            for (int d = 1; d <= k; d++) {
-                int newX = position.x + DX[i] * d;
-                int newY = position.y + DY[i] * d;
-                if (isInner(newX, newY)) {
-                    if (canPoison(newX, newY)) {
-                        answer += tree[newX][newY];
-                        tree[newX][newY] = 0;
-                        poison[newX][newY] = time + c;
-                    } else {
-                        if (tree[newX][newY] == -1) {
-                            break;
+                if (trees[i][j] > 0) {
+                    int birthCount = 0;
+                    for (int d = 0; d < 8; d += 2) {
+                        int newX = i + DX[d];
+                        int newY = j + DY[d];
+                        if (isInner(newX, newY) && canGrowNewTree(newX, newY)) {
+                            birthCount += 1;
                         }
-                        answer += tree[newX][newY];
-                        tree[newX][newY] = 0;
-                        poison[newX][newY] = time + c;
-                        break;
                     }
-                } else {
-                    break;
+                    for (int d = 0; d < 8; d += 2) {
+                        int newX = i + DX[d];
+                        int newY = j + DY[d];
+                        if (isInner(newX, newY) && canGrowNewTree(newX, newY)) {
+                            newTree[newX][newY] += trees[i][j] / birthCount;
+                        }
+                    }
                 }
-
             }
         }
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                trees[i][j] += newTree[i][j];
+            }
+        }
+    }
+
+    boolean canGrowNewTree(int x, int y) {
+        return trees[x][y] == 0 && sanitizeDuration[x][y] < year;
+    }
+
+    void sanitize() {
+        Position sanitizePosition = getSanitizePosition();
+        if (sanitizePosition == null) {
+            return;
+        }
+        answer += sanitizePosition.count;
+        trees[sanitizePosition.x][sanitizePosition.y] = 0;
+        sanitizeDuration[sanitizePosition.x][sanitizePosition.y] = year + c;
+        for (int d = 1; d < 8; d += 2) {
+            int cx = sanitizePosition.x + DX[d];
+            int cy = sanitizePosition.y + DY[d];
+            int distance = 1;
+            while (isInner(cx, cy) && distance <= k) {
+                if (trees[cx][cy] <= 0) {
+                    sanitizeDuration[cx][cy] = year + c;
+                    break;
+                }
+                trees[cx][cy] = 0;
+                sanitizeDuration[cx][cy] = year + c;
+                distance += 1;
+                cx += DX[d];
+                cy += DY[d];
+            }
+        }
+    }
+
+    Position getSanitizePosition() {
+        PriorityQueue<Position> heap = new PriorityQueue<>(Position::sort);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (trees[i][j] > 0) {
+                    heap.add(new Position(i, j, getRemoveTreeCount(i, j)));
+                }
+            }
+        }
+        if (heap.isEmpty()) {
+            return null;
+        }
+        return heap.remove();
+    }
+
+    int getRemoveTreeCount(int x, int y) {
+        int count = trees[x][y];
+        for (int d = 1; d < 8; d += 2) {
+            int cx = x + DX[d];
+            int cy = y + DY[d];
+            int distance = 1;
+            while (isInner(cx, cy) && distance <= k) {
+                if (trees[cx][cy] <= 0) {
+                    break;
+                }
+                count += trees[cx][cy];
+                distance += 1;
+                cx += DX[d];
+                cy += DY[d];
+            }
+        }
+        return count;
+    }
 
 
+    void printResult() throws IOException {
+        BW.write(Integer.toString(answer));
+        BW.flush();
+        BW.close();
+        BR.close();
     }
 
     static class Position {
         int x;
         int y;
+        int count;
 
-        public Position(int x, int y) {
+        Position(int x, int y, int count) {
             this.x = x;
             this.y = y;
+            this.count = count;
+        }
+
+        int sort(Position compare) {
+            if (this.count != compare.count) {
+                return Integer.compare(compare.count, this.count);
+            }
+            if (this.x != compare.x) {
+                return Integer.compare(this.x, compare.x);
+            }
+            return Integer.compare(this.y, compare.y);
         }
     }
-
 }
