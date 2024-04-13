@@ -46,7 +46,12 @@ public class Main {
         while (year <= m) {
             growTree();
             spreadTree();
-            sanitize();
+            try {
+
+                sanitize();
+            } catch (Exception e) {
+                break;
+            }
             year += 1;
         }
     }
