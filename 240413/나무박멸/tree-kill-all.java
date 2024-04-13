@@ -6,13 +6,12 @@ public class Main {
     static final BufferedWriter BW = new BufferedWriter(new OutputStreamWriter(System.out));
     static final int[] DX = {0, 1, 1, 1, 0, -1, -1, -1};
     static final int[] DY = {1, 1, 0, -1, -1, -1, 0, 1};
-    static final int WALL = -1;
 
     int[] inputArray;
     int n, m, k, c;
     int year;
     int[][] trees;
-    int[][] lastSanitized;
+    int[][] sanitizeDuration;
     int answer;
 
     public static void main(String[] args) throws IOException {
@@ -34,7 +33,7 @@ public class Main {
         c = inputArray[3];
 
         trees = new int[n][n];
-        lastSanitized = new int[n][n];
+        sanitizeDuration = new int[n][n];
         for (int i = 0; i < n; i++) {
             trees[i] = getInputArray();
         }
@@ -46,12 +45,7 @@ public class Main {
         while (year <= m) {
             growTree();
             spreadTree();
-            try {
-
-                sanitize();
-            } catch (Exception e) {
-                break;
-            }
+            sanitize();
             year += 1;
         }
     }
@@ -109,21 +103,24 @@ public class Main {
     }
 
     boolean canGrowNewTree(int x, int y) {
-        return trees[x][y] == 0 && lastSanitized[x][y] < year;
+        return trees[x][y] == 0 && sanitizeDuration[x][y] < year;
     }
 
     void sanitize() {
         Position sanitizePosition = getSanitizePosition();
+        if (sanitizePosition == null) {
+            return;
+        }
         answer += sanitizePosition.count;
         trees[sanitizePosition.x][sanitizePosition.y] = 0;
-        lastSanitized[sanitizePosition.x][sanitizePosition.y] = year + c;
+        sanitizeDuration[sanitizePosition.x][sanitizePosition.y] = year + c;
         for (int d = 1; d < 8; d += 2) {
             int cx = sanitizePosition.x + DX[d];
             int cy = sanitizePosition.y + DY[d];
             int distance = 1;
             while (canRemove(cx, cy) && distance <= k) {
                 trees[cx][cy] = 0;
-                lastSanitized[cx][cy] = year + c;
+                sanitizeDuration[cx][cy] = year + c;
                 distance += 1;
                 cx += DX[d];
                 cy += DY[d];
@@ -139,6 +136,9 @@ public class Main {
                     heap.add(new Position(i, j, getRemoveTreeCount(i, j)));
                 }
             }
+        }
+        if (heap.isEmpty()) {
+            return null;
         }
         return heap.remove();
     }
@@ -160,7 +160,7 @@ public class Main {
     }
 
     boolean canRemove(int x, int y) {
-        return isInner(x, y) && trees[x][y] != -1;
+        return isInner(x, y) && trees[x][y] > 0;
     }
 
     void printResult() throws IOException {
