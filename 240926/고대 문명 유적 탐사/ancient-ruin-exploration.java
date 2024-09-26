@@ -205,7 +205,7 @@ public class Main {
             if (this.catched != compare.catched) {
                 return Integer.compare(compare.catched, this.catched);
             }
-            if (this.angle != compare.catched) {
+            if (this.angle != compare.angle) {
                 return Integer.compare(this.angle, compare.angle);
             }
             if (this.y != compare.y) {
