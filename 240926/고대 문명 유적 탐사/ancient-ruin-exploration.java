@@ -39,8 +39,8 @@ public class Main {
 
     void solve() {
         while (K-- > 0) {
-            explore();
             int catched = 0;
+            explore();
             while (true) {
                 int treasures = takeTreasures();
                 if (treasures == 0) { break; }
@@ -69,30 +69,15 @@ public class Main {
         }
     }
 
-    /*
-    0 0 -> 0 2
-    0 2 -> 2 2
-    2 2 -> 2 0
-    2 0 -> 0 0
-    */
     int[][] rotateBoard(int[][] b, int x, int y) {
         int[][] newBoard = new int[5][5];
         copyBoard(b, newBoard);
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
-                newBoard[j+x][2-i+y] = board[i+x][j+y];
+                newBoard[j+x][2-i+y] = b[i+x][j+y];
             }
         }
         return newBoard;
-    }
-
-    void printBoard(int[][] b) {
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                System.out.print(b[i][j] +" ");
-            }
-            System.out.println();
-        }
     }
 
     void copyBoard(int[][] from, int[][] to) {
@@ -197,7 +182,7 @@ public class Main {
             for (int i = 4; i >= 0; i--) {
                 if (board[i][j] == 0) {
                     board[i][j] = wall[index];
-                    index = (index + 1) % wall.length;
+                    index++;
                 }
             }
         }
