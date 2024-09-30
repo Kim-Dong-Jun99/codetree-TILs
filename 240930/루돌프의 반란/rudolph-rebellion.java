@@ -1,61 +1,9 @@
 import java.util.*;
 import java.io.*;
 
-/*
-17:41
-
-P 명 산타,
-N * N 크기 격자
-M개의 턴
-    - 루돌프가 한번 움직이고, 1번 산타부터 P번 산타까지 움직임,
-    - 기절해있거나, 탈락한 산타 이동 불가
-두 칸 사이 거리 = 유클리드 좌표 거리
-
-루돌프
-- 게임에서 탈락하지 않은 가장 가까운 산타를 향해 1칸 돌진,
-- 가장 가까운 산타가 2명 이상이라면, r좌표가 큰 산타를 향해, 4 좌표가 동일한 경우, c 좌표가 큰 산타
-상하좌우, 대각선을 포함한 8방향 중 하나로 돌진 가능,
-
-산타
-- 1번 부터 움직임,
-- 기절 탈락 이동 불가
-- 루돌프에게 가장 가까워지는 방향으로 1칸 이동
-- 다른 산타가 있는 칸, 게임판 밖으로 이동 불가
-- 움직일 수 있는 칸이 없으면 이동 x
-- 상하좌우 중 1방향, 우선 순위 상우하좌,
-
-충돌
-- 산타와 루돌프 같은 칸
-- 루돌프가 움직여 충돌
-    - 산타는 C 만큼 점수
-    - 산타는 루돌프가 이동해온 방향으로 C만큼 밀려남
-- 산타가 움직여 충돌
-    - 산타는 D 만큼 점수
-    - 이동해온 반대 방향으로 D 만큼 밀려남
-- 밀려나는 것은 포물선으로,
-    - 밀려난 위치가 게임판 밖이면 탈락
-    - 밀려난 칸에 다른 산타가 있음, 상호작용
-
-상호작용
-- 충돌 후 착지하게 되는 칸에 다른 산타가 있다면 산타는 해당 방향으로 1칸 밀려남,
-- 밀려난 칸에 산타가 있다면 연쇄적으로 밀려남, 
-- 게임판 바깥으로 밀려나면 탈락
-
-기절
-- 루돌프와 충돌 후 기절
-- k번째턴이면 k+1 번째까지 기절
-- K-2부터 활동 가능
-- 상호작용으로 밀려나기 가능, 돌진 대상으로 선택 가능
-
-M번의 턴에 걸쳐 루돌프, 산타가 순서대로 움직인 이후 게임 종료
-P 명의 산타가 모두 게임에서 탈락하면 그 즉시 종료
-매 턴 이후 탈락하지 않은 산타는 1점씩 획득
-
-
-*/
-
 public class Main {
     static final BufferedReader BR = new BufferedReader(new InputStreamReader(System.in));
+    static final BufferedWriter BW = new BufferedWriter(new OutputStreamWriter(System.out));
     static final int[] DX = {-1, -1, 0, 1, 1, 1, 0, -1};
     static final int[] DY = {0, 1, 1, 1, 0, -1, -1, -1};
     static final int[] OPPOSITE = {4, 5, 6, 7, 0, 1, 2, 3};
@@ -63,16 +11,16 @@ public class Main {
     int[] inputArray;
     int N, M, P, C, D;
     int rx, ry;
-    int[][] board;
+    int[][] santaBoard;
     Santa[] santas;
-    int turn;
+    int outCount, turn;
 
     public static void main(String[] args) throws IOException {
         Main main = new Main();
         main.init();
         main.solve();
         main.printResult();
-    } 
+    }
 
     int[] getInputArray() throws IOException {
         return Arrays.stream(BR.readLine().split(" ")).mapToInt(Integer::parseInt).toArray();
@@ -90,233 +38,224 @@ public class Main {
         rx = inputArray[0]-1;
         ry = inputArray[1]-1;
 
-        board = new int[N][N];
         santas = new Santa[P+1];
-        turn = 1;
-        for (int i = 1; i <= P; i++) {
+        santaBoard = new int[N][N];
+        for (int i = 0; i < P; i++) {
             inputArray = getInputArray();
-            santas[i] = new Santa(inputArray[0], inputArray[1]-1, inputArray[2]-1);
-            markSanta(santas[i]);
+            int index = inputArray[0];
+            int x = inputArray[1]-1;
+            int y = inputArray[2]-1;
+            Santa santa = new Santa(index, x, y);
+            santaBoard[x][y] = index;
+            santas[index] = santa;
         }
 
+        outCount = 0;
+        turn = 1;
     }
 
-    void solve() {
-        while (turn <= M) {
-            moveRudolf();
-            moveSantas();
-            if (updateSantaScore()) {
-                break;
-            }
-            turn++;
+    void solve() throws IOException {
+        while (turn <= M && outCount < P) {
+            rudolfTurn();
+            santaTurn();
+            updateScore();
+            turn += 1;
+        }
+        printScore();
+    }
+
+    void rudolfTurn() {
+        ClosestSanta closestSanta = getClosestSanta();
+        int direction = getRudolfDirection(closestSanta);
+        rx += DX[direction];
+        ry += DY[direction];
+        if (santaBoard[rx][ry] != 0) {
+            rudolfCrashSanta(direction);
         }
     }
 
-    void moveRudolf() {
-        int d = getRudolfDirection();
-        rx += DX[d];
-        ry += DY[d];
-        if (board[rx][ry] != 0) {
-            crashed(d, C);
-        }
-
-    }
-
-    int getRudolfDirection() {
-        Santa s = santas[getClosestSanta()];
-        PriorityQueue<RudolfMove> heap = new PriorityQueue<>(RudolfMove::sort);
-        for (int d = 0; d < 8; d++) {
-            int nx = rx + DX[d];
-            int ny = ry + DY[d];
-            if (isInner(nx, ny)) {
-                int distance = calcDis(nx, ny, s.x, s.y);
-                heap.add(new RudolfMove(distance, nx, ny, d));
-            }
-        }
-        return heap.remove().d;
-    }
-
-    int getClosestSanta() {
-        PriorityQueue<SantaMove> heap = new PriorityQueue<>(SantaMove::sort);
-        
-        for (int i = 1; i <= P; i++) {
-            Santa s = santas[i];
-            if (!isInner(s.x, s.y)) {
-                continue;
-            }
-            heap.add(new SantaMove(s.id, calcDis(rx, ry, s.x, s.y), s.x, s.y));
-        }
-        return heap.remove().id;
-    }
-
-    int calcDis(int x1, int y1, int x2, int y2) {
-        return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
-    }
-
-    void crashed(int direction, int distance) {
-        Santa santa = santas[board[rx][ry]];
+    void rudolfCrashSanta(int direction) {
+        Santa santa = santas[santaBoard[rx][ry]];
+        santa.score += C;
         santa.crashed = turn + 1;
-        santa.score += distance;
         unmarkSanta(santa);
-        throwSanta(santa, direction, distance);
+        santa.x += DX[direction] * C;
+        santa.y += DY[direction] * C;
         if (!isInner(santa.x, santa.y)) {
+            santa.isOut = true;
+            outCount += 1;
             return;
         }
-        if (board[santa.x][santa.y] == 0) {
-            markSanta(santa);
-        } else {
-            Santa toPush = santas[board[santa.x][santa.y]];
-            pushSanta(toPush, direction);
-            markSanta(santa);
+        if (santaBoard[santa.x][santa.y] != 0) {
+            interaction(santas[santaBoard[santa.x][santa.y]], direction);
         }
+        markSanta(santa);
+    }
+
+    void interaction(Santa santa, int direction) {
+        unmarkSanta(santa);
+        santa.x += DX[direction];
+        santa.y += DY[direction];
+        if (!isInner(santa.x, santa.y)) {
+            santa.isOut = true;
+            outCount += 1;
+            return;
+        }
+        if (santaBoard[santa.x][santa.y] != 0) {
+            interaction(santas[santaBoard[santa.x][santa.y]], direction);
+        }
+        markSanta(santa);
 
     }
 
-    void moveSantas() {
+    void unmarkSanta(Santa santa) {
+        santaBoard[santa.x][santa.y] = 0;
+    }
+
+    void markSanta(Santa santa) {
+        santaBoard[santa.x][santa.y] = santa.index;
+    }
+
+    ClosestSanta getClosestSanta() {
+        PriorityQueue<ClosestSanta> heap = new PriorityQueue<>(ClosestSanta::sort);
         for (int i = 1; i <= P; i++) {
-            Santa s = santas[i];
-            moveSanta(s);
+            Santa santa = santas[i];
+            if (!santa.isOut) {
+                int d = getDistance(rx, ry, santa.x, santa.y);
+                heap.add(new ClosestSanta(d, santa.x, santa.y));
+            }
         }
+        return heap.remove();
     }
 
-    void moveSanta(Santa s) {
-        if (!isInner(s.x, s.y)) {
-            return;
-        }
-        if (turn <= s.crashed) {
-            return;
-        }
-        int direction = getSantaDirection(s);
-        if (direction == -1) {
-            return;
-        }
-        unmarkSanta(s);
-        s.x += DX[direction];
-        s.y += DY[direction];
-        markSanta(s);
-        if (rx == s.x && s.y == ry) {
-            crashed(OPPOSITE[direction], D);
-        }
-
-    }   
-
-
-    int getSantaDirection(Santa s) {
+    int getRudolfDirection(ClosestSanta closestSanta) {
+        int distance = 2500;
         int direction = -1;
-        int curDistance = calcDis(s.x, s.y, rx, ry);
-        for (int d = 0; d < 8; d += 2) {
-            int nx = s.x + DX[d];
-            int ny = s.y + DY[d];
-            if (!isInner(nx, ny) || board[nx][ny] != 0) {
-                continue;
-            }
-            if (curDistance > calcDis(nx, ny, rx, ry)) {
-                return d;
+        for (int d = 0; d < 8; d++) {
+            int newX = rx + DX[d];
+            int newY = ry + DY[d];
+            int newDistance = getDistance(newX, newY, closestSanta.x, closestSanta.y);
+            if (newDistance < distance) {
+                distance = newDistance;
+                direction = d;
             }
         }
         return direction;
+
     }
 
-
-
-    void throwSanta(Santa s, int direction, int distance) {
-        s.x += DX[direction] * distance;
-        s.y += DY[direction] * distance;
-    }
-
-    void pushSanta(Santa s, int direction) {
-        unmarkSanta(s);
-        s.x += DX[direction];
-        s.y += DY[direction];
-        if (isInner(s.x, s.y)) {
-            if (board[s.x][s.y] == 0) {
-                markSanta(s);
-            } else {
-                Santa toPush = santas[board[s.x][s.y]];
-                pushSanta(toPush, direction);
-                markSanta(s);
-            }
-        }
-    }
-
-    void unmarkSanta(Santa s) {
-        board[s.x][s.y] = 0;
-    }
-
-    void markSanta(Santa s) {
-        board[s.x][s.y] = s.id;
-    }
-
-    boolean updateSantaScore() {
-        int out = 0;
-        for (int i = 1; i <= P; i++) {
-            Santa s = santas[i];
-            if (isInner(s.x, s.y)) {
-                s.score += 1;
-            } else {
-                out += 1;
-            }
-        }
-        return out == P;
+    int getDistance(int x1, int y1, int x2, int y2) {
+        return (int) (Math.pow(x1-x2,2) + Math.pow(y1-y2,2));
     }
 
     boolean isInner(int x, int y) {
         return 0 <= x && x < N && 0 <= y && y < N;
     }
 
-    void printResult() {
+    void santaTurn() {
         for (int i = 1; i <= P; i++) {
-            System.out.print(santas[i].score+" ");
+            Santa santa = santas[i];
+            if (!santa.isOut && turn > santa.crashed) {
+                int direction = getNextDirection(santa);
+                if (direction != -1) {
+                    unmarkSanta(santa);
+                    santa.x += DX[direction];
+                    santa.y += DY[direction];
+                    if (santa.x == rx && santa.y == ry) {
+                        santaCrashWithRudolf(santa, direction);
+                    } else {
+                        markSanta(santa);
+                    }
+                }
+            }
         }
+    }
+
+    void santaCrashWithRudolf(Santa santa, int direction) {
+        santa.score += D;
+        santa.crashed = turn + 1;
+        int opposite = OPPOSITE[direction];
+        santa.x += DX[opposite] * D;
+        santa.y += DY[opposite] * D;
+        if (!isInner(santa.x, santa.y)) {
+            santa.isOut = true;
+            outCount += 1;
+            return;
+        }
+
+        if (santaBoard[santa.x][santa.y] != 0) {
+            interaction(santas[santaBoard[santa.x][santa.y]], opposite);
+        }
+
+        markSanta(santa);
+    }
+
+    int getNextDirection(Santa santa) {
+        int distance = getDistance(rx, ry, santa.x, santa.y);
+        int direction = -1;
+        for (int d = 0; d < 8; d += 2) {
+            int newX = santa.x + DX[d];
+            int newY = santa.y + DY[d];
+            int newDistance = getDistance(rx, ry, newX, newY);
+            if (isInner(newX, newY) && santaBoard[newX][newY] == 0 && newDistance < distance) {
+                distance = newDistance;
+                direction = d;
+            }
+        }
+        return direction;
+    }
+
+    void updateScore() {
+        for (int i = 1; i <= P; i++) {
+            Santa santa = santas[i];
+            if (!santa.isOut) {
+                santa.score += 1;
+            }
+        }
+    }
+
+    void printScore() throws IOException {
+        for (int i = 1; i <= P; i++) {
+            BW.write(Integer.toString(santas[i].score) +" ");
+        }
+    }
+
+    void printResult() throws IOException {
+        BW.flush();
+        BW.close();
+        BR.close();
     }
 
     static class Santa {
-        int id;
+        int index;
         int x;
         int y;
-        int crashed;
         int score;
+        boolean isOut;
+        int crashed;
 
-        Santa(int id, int x, int y) {
-            this.id = id;
+        Santa(int index, int x, int y) {
+            this.index = index;
             this.x = x;
             this.y = y;
+            this.score = 0;
+            this.isOut = false;
+            this.crashed = 0;
         }
     }
 
-    static class RudolfMove {
-        int distance;
-        int x;
-        int y;
-        int d;
-
-        RudolfMove(int distance, int x, int y, int d) {
-            this.distance = distance;
-            this.x = x;
-            this.y = y;
-            this.d = d;
-        }
-
-        int sort(RudolfMove compare) {
-            return Integer.compare(this.distance, compare.distance);
-            
-        }
-    }
-
-    static class SantaMove {
-        int id;
+    static class ClosestSanta {
         int distance;
         int x;
         int y;
 
-        SantaMove(int id, int distance, int x, int y) {
-            this.id = id;
+        ClosestSanta(int distance, int x, int y) {
             this.distance = distance;
             this.x = x;
             this.y = y;
         }
 
-        int sort(SantaMove compare) {
+        int sort(ClosestSanta compare) {
             if (this.distance != compare.distance) {
                 return Integer.compare(this.distance, compare.distance);
             }
@@ -326,4 +265,6 @@ public class Main {
             return Integer.compare(compare.y, this.y);
         }
     }
+
+
 }
